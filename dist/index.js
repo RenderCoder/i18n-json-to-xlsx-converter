@@ -19,7 +19,7 @@ const utils_1 = require("./utils");
         const isMultipleJSONFilePaths = utils_1.default.getJSONFilePaths(filePath).length > 1;
         const isMultipleJSONFilePathsValid = utils_1.default.isMultipleJSONFilePathsValid(filePath);
         if (utils_1.default.isJSON(sourceFileType) || utils_1.default.isXLSX(sourceFileType) || isMultipleJSONFilePathsValid) {
-            utils_1.default.createProcessMessageByType(filePath, sourceFileType, (isMultipleJSONFilePathsValid && isMultipleJSONFilePaths));
+            utils_1.default.createProcessMessageByType(filePath, sourceFileType, isMultipleJSONFilePathsValid && isMultipleJSONFilePaths);
         }
         else {
             utils_1.default.checkForMultipleJSONFileErrors(filePath, process);
@@ -69,29 +69,57 @@ const utils_1 = require("./utils");
         }
         else {
             const JSONFiles = utils_1.default.getJSONFilePaths(filePath);
+            const en = JSON.parse((await fs.promises.readFile('en.json')).toString());
             for (const JSONFile of JSONFiles) {
+                const keysInEn = Object.keys(en);
+                const unusedKeysInEn = new Set([...keysInEn]);
                 const sourceBuffer = await fs.promises.readFile(JSONFile);
                 const sourceText = sourceBuffer.toString();
                 const sourceData = JSON.parse(sourceText);
                 const workbook = new Excel.Workbook();
                 const worksheet = workbook.addWorksheet('Converted');
                 let rowCount = 1;
-                const writeToXLSX = (key, value) => {
+                const writeToXLSX = (key, value, isHeader) => {
+                    console.log('#writeToXLSX', { key, value });
                     const rows = worksheet.getRow(rowCount);
                     rows.getCell(1).value = key;
                     // Check for null, "" of the values and assign semantic character for that
-                    rows.getCell(2).value = (value || '-').toString();
+                    rows.getCell(2).value = (value || '').toString();
+                    rows.getCell(3).value = (en[key] || '').toString();
+                    if (isHeader) {
+                        rows.getCell(3).value = 'English';
+                    }
                     rowCount += 1;
                 };
-                writeToXLSX('Key', utils_1.default.getFileName(JSONFile).toUpperCase());
+                writeToXLSX('Key', utils_1.default.getFileName(JSONFile).toUpperCase(), true);
                 const parseAndWrite = (parentKey, targetObject) => {
                     const keys = Object.keys(targetObject);
                     for (const key of keys) {
                         const element = targetObject[key];
+                        // ignore chinese property in en
+                        if (utils_1.default.containsChinese(en[key])) {
+                            continue;
+                        }
                         if (typeof element === 'object' && element !== null) {
                             parseAndWrite(utils_1.default.writeByCheckingParent(parentKey, key), element);
                         }
                         else {
+                            unusedKeysInEn.delete(key);
+                            writeToXLSX(utils_1.default.writeByCheckingParent(parentKey, key), element);
+                        }
+                    }
+                    // write unused keys in en for current language
+                    for (const key of [...unusedKeysInEn]) {
+                        const element = targetObject[key];
+                        // ignore chinese property in en
+                        if (utils_1.default.containsChinese(en[key])) {
+                            continue;
+                        }
+                        if (typeof element === 'object' && element !== null) {
+                            parseAndWrite(utils_1.default.writeByCheckingParent(parentKey, key), element);
+                        }
+                        else {
+                            console.log('# write unused keys for lang', JSONFile, key);
                             writeToXLSX(utils_1.default.writeByCheckingParent(parentKey, key), element);
                         }
                     }

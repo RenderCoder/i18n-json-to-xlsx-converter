@@ -116,6 +116,11 @@ const getJSONFilePaths = (filePath: string) => {
   return filePath.split(',').map((JSONFilePath) => JSONFilePath.trim());
 };
 
+function containsChinese(s: string) {
+  return /[\u4E00-\u9FA5]/.test(s);
+}
+
+
 export default {
   log,
   warn,
@@ -135,4 +140,5 @@ export default {
   isMultipleJSONFilePathsValid,
   checkForMultipleJSONFileErrors,
   getJSONFilePaths,
+  containsChinese,
 };

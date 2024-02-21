@@ -1,4 +1,5 @@
 /// <reference types="node" />
+declare function containsChinese(s: string): boolean;
 declare const _default: {
     log: {
         (...data: any[]): void;
@@ -30,5 +31,6 @@ declare const _default: {
     isMultipleJSONFilePathsValid: (filePath: string) => boolean;
     checkForMultipleJSONFileErrors: (filePath: string, process: NodeJS.Process) => void;
     getJSONFilePaths: (filePath: string) => string[];
+    containsChinese: typeof containsChinese;
 };
 export default _default;
